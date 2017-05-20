@@ -84,6 +84,18 @@
         :cljs (ISeqable
                (-seq [this] (sampleable->seq this)))))
 
+(deftype ^:no-doc Exponential
+    [rate]
+    ISampleable
+    (sample-1 [this rng]
+      (/ (- (log (rand-double rng))) rate))
+    (sample-n [this n rng]
+      (map #(sample-1 this %) (split-n rng n)))
+    #?@(:clj (clojure.lang.ISeq
+              (seq [this] (sampleable->seq this)))
+        :cljs (ISeqable
+               (-seq [this] (sampleable->seq this)))))
+
 (deftype ^:no-doc Binomial
     [n p]
     ISampleable
@@ -178,6 +190,12 @@
   Params: a ∈ ℝ, b ∈ ℝ"
   [a b]
   (->Uniform a b))
+
+(defn exponential
+  "Returns an exponential distribution.
+  Params: rate ∈ ℝ > 0"
+  [rate]
+  (->Exponential rate))
 
 (defn bernoulli
   "Returns a Bernoulli distribution.

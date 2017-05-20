@@ -18,6 +18,9 @@
   "Returns a double between 0 and 1 inclusive"
   (gen/fmap #(* % 0.001) (gen/such-that #(<= % 1000) gen/nat)))
 
+(def gen-rate
+  (gen/such-that pos? gen-probability))
+
 (def gen-probabilities
   "Returns a vector of probabilities which sum to 1.0"
   (->> (gen/not-empty (gen/vector gen/s-pos-int))
@@ -35,11 +38,14 @@
   (for-all [seed gen/int
             a gen/int
             b gen/int
+            r gen-rate
             p gen-probability
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/draw (sut/uniform a b) {:seed seed})
            (sut/draw (sut/uniform a b) {:seed seed})))
+    (is (= (sut/draw (sut/exponential r) {:seed seed})
+           (sut/draw (sut/exponential r) {:seed seed})))
     (is (= (sut/draw (sut/bernoulli p) {:seed seed})
            (sut/draw (sut/bernoulli p) {:seed seed})))
     (is (= (sut/draw (sut/binomial {:n n :p p}) {:seed seed})
@@ -54,11 +60,14 @@
   (for-all [seed gen/int
             a gen/int
             b gen/int
+            r gen-rate
             p gen-probability
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/sample n (sut/uniform a b) {:seed seed})
            (sut/sample n (sut/uniform a b) {:seed seed})))
+    (is (= (sut/sample n (sut/exponential r) {:seed seed})
+           (sut/sample n (sut/exponential r) {:seed seed})))
     (is (= (sut/sample n (sut/bernoulli p) {:seed seed})
            (sut/sample n (sut/bernoulli p) {:seed seed})))
     (is (= (sut/sample n (sut/binomial {:n n :p p}) {:seed seed})
@@ -92,6 +101,12 @@
                        (gen/fmap sort))]
     (let [draw (sut/draw (sut/uniform a b))]
       (is (and (<= a draw) (< draw b))))))
+
+(defspec exponential-returns-positive-floats
+  test-opts
+  (for-all [r gen-rate]
+    (is (float? (sut/draw (sut/exponential r))))
+    (is (pos? (sut/draw (sut/exponential r))))))
 
 (defspec bournoulli-returns-boolean
   test-opts
