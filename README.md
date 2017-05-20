@@ -94,7 +94,7 @@ If you have multiple statistics to calculate over the same collection, take a lo
 
 `draw` and `sample` are the primary means of extracting variates from a distribution. `draw` returns a single variate whereas `sample` returns _n_ variates.
 
-Each distribution implements the `clojure.lang.ISeq` / `ISeqable`  interface, so an infinite lazy sequence can be generated with `(seq (binomial {:n 100 :p 0.5)))`. Where possible, `sample` uses optimisations to return exactly _n_ variates, and should be preferred.
+Each distribution implements the `clojure.lang.ISeq` / `ISeqable`  interface, so _n_ variates can be sampled with `(take n (binomial {:n 100 :p 0.5}))`. However, where possible `sample` uses optimisations to return exactly _n_ variates, and should be preferred.
 
 **Discrete summarisation**
 
