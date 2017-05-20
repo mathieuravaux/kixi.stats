@@ -96,39 +96,45 @@
 
 (defspec uniform-does-not-exceed-bounds
   test-opts
-  (for-all [[a b] (->> (gen/tuple gen/int gen/int)
+  (for-all [seed gen/int
+            [a b] (->> (gen/tuple gen/int gen/int)
                        (gen/such-that (fn [[a b]] (not= a b)))
                        (gen/fmap sort))]
-    (let [draw (sut/draw (sut/uniform a b))]
+    (let [draw (sut/draw (sut/uniform a b) {:seed seed})]
       (is (and (<= a draw) (< draw b))))))
 
 (defspec exponential-returns-positive-floats
   test-opts
-  (for-all [r gen-rate]
-    (is (float? (sut/draw (sut/exponential r))))
-    (is (pos? (sut/draw (sut/exponential r))))))
+  (for-all [seed gen/int
+            r gen-rate]
+    (is (float? (sut/draw (sut/exponential r) {:seed seed})))
+    (is (pos? (sut/draw (sut/exponential r) {:seed seed})))))
 
 (defspec bournoulli-returns-boolean
   test-opts
-  (for-all [p gen-probability]
-           (is (contains? #{true false} (sut/draw (sut/bernoulli p))))))
+  (for-all [seed gen/int
+            p gen-probability]
+    (is (contains? #{true false} (sut/draw (sut/bernoulli p) {:seed seed})))))
 
 (defspec binomial-returns-integers
   test-opts
-  (for-all [n gen/nat
+  (for-all [seed gen/int
+            n gen/nat
             p gen-probability]
-    (is (integer? (sut/draw (sut/binomial {:n n :p p}))))))
+    (is (integer? (sut/draw (sut/binomial {:n n :p p}) {:seed seed})))))
 
 (defspec normal-returns-floats
   test-opts
-  (for-all [mu (gen/double* {:infinite? false :NaN? false})
+  (for-all [seed gen/int
+            mu (gen/double* {:infinite? false :NaN? false})
             sd (gen/double* {:infinite? false :NaN? false :min 0})]
-    (is (float? (sut/draw (sut/normal {:mu mu :sd sd}))))))
+    (is (float? (sut/draw (sut/normal {:mu mu :sd sd}) {:seed seed})))))
 
 (defspec categorical-returns-supplied-categories
   test-opts
-  (for-all [[ks ps] gen-categories]
-    (is (contains? (set ks) (sut/draw (sut/categorical ks ps))))))
+  (for-all [seed gen/int
+            [ks ps] gen-categories]
+    (is (contains? (set ks) (sut/draw (sut/categorical ks ps) {:seed seed})))))
 
 (defspec bernoulli-probabilities-are-well-behaved
   test-opts
