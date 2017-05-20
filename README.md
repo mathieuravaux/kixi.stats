@@ -5,6 +5,7 @@ A Clojure/ClojureScript library of statistical sampling and transducing function
 **Available distributions:**
 
 * Uniform
+* Exponential
 * Bernoulli
 * Binomial
 * Normal
@@ -91,9 +92,9 @@ If you have multiple statistics to calculate over the same collection, take a lo
 ;;=> (49 53 53 44 55 47 45 51 49 51)
 ```
 
-`draw` and `sample` are the primary means of extracting samples from a distribution. `draw` returns a single sample whereas `sample` returns _n_ samples.
+`draw` and `sample` are the primary means of extracting variates from a distribution. `draw` returns a single variate whereas `sample` returns _n_ variates.
 
-Each distribution implements the `clojure.lang.ISeq` / `ISeqable`  interface, so an infinite lazy sequence can be generated with `(seq (binomial {:n 100 :p 0.5)))`. Where possible, `sample` uses optimisations to return exactly _n_ values, and should be preferred.
+Each distribution implements the `clojure.lang.ISeq` / `ISeqable`  interface, so an infinite lazy sequence can be generated with `(seq (binomial {:n 100 :p 0.5)))`. Where possible, `sample` uses optimisations to return exactly _n_ variates, and should be preferred.
 
 **Discrete summarisation**
 
