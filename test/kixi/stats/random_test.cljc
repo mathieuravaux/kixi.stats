@@ -29,6 +29,10 @@
                      (->> (concat vector [0 0])
                           (mapv #(double (/ % sum)))))))))
 
+(def gen-shape
+  "Returns a double > 0 and <= 10"
+  (gen/fmap #(* % 0.001) (gen/such-that #(and (<= % 10000) (not (#{2 3} %))) gen/s-pos-int)))
+
 (def gen-categories
   "Returns [[categories] [probabilities]]. Probabilities sum to 1.0"
   (gen/fmap #(vector (range (count %)) %) gen-probabilities))
@@ -39,6 +43,7 @@
             a gen/int
             b gen/int
             r gen-rate
+            s gen-shape
             p gen-probability
             n gen/nat
             [ks ps] gen-categories]
@@ -52,6 +57,8 @@
            (sut/draw (sut/binomial {:n n :p p}) {:seed seed})))
     (is (= (sut/draw (sut/normal {:mu a :sd b}) {:seed seed})
            (sut/draw (sut/normal {:mu a :sd b}) {:seed seed})))
+    (is (= (sut/draw (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})
+           (sut/draw (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
     (is (= (sut/draw (sut/categorical ks ps) {:seed seed})
            (sut/draw (sut/categorical ks ps) {:seed seed})))))
 
@@ -61,6 +68,7 @@
             a gen/int
             b gen/int
             r gen-rate
+            s gen-shape
             p gen-probability
             n gen/nat
             [ks ps] gen-categories]
@@ -74,6 +82,8 @@
            (sut/sample n (sut/binomial {:n n :p p}) {:seed seed})))
     (is (= (sut/sample n (sut/normal {:mu a :sd b}) {:seed seed})
            (sut/sample n (sut/normal {:mu a :sd b}) {:seed seed})))
+    (is (= (sut/sample n (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})
+           (sut/sample n (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
     (is (= (sut/sample n (sut/categorical ks ps) {:seed seed})
            (sut/sample n (sut/categorical ks ps) {:seed seed})))))
 
@@ -129,6 +139,13 @@
             mu (gen/double* {:infinite? false :NaN? false})
             sd (gen/double* {:infinite? false :NaN? false :min 0})]
     (is (float? (sut/draw (sut/normal {:mu mu :sd sd}) {:seed seed})))))
+
+(defspec gamma-returns-floats
+  test-opts
+  (for-all [seed gen/int
+            shape gen-shape
+            rate gen-rate]
+    (is (float? (sut/draw (sut/gamma {:shape shape :scale (/ 0.5 rate)})  {:seed seed})))))
 
 (defspec categorical-returns-supplied-categories
   test-opts

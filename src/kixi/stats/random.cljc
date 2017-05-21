@@ -1,9 +1,12 @@
 (ns kixi.stats.random
   (:refer-clojure :exclude [shuffle rand-int])
-  (:require [kixi.stats.utils :refer [log sqrt cos PI]]
+  (:require [kixi.stats.utils :refer [pow log sqrt cos PI]]
             [clojure.test.check.random :refer [make-random rand-double rand-long split split-n]]))
 
 ;;;; Randomness helpers
+
+(def ^:no-doc next-rng
+  (comp first split))
 
 (defn ^:no-doc swap
   [coll [i1 i2]]
@@ -14,13 +17,46 @@
   (let [r (* (rand-double rng) (- b a))]
     (int (+ a r))))
 
+(defn ^:no-doc rand-normal
+  [rng]
+  (let [[r1 r2] (split rng)]
+    (* (sqrt (* -2 (log (rand-double r1))))
+       (cos (* 2 PI (rand-double r2))))))
+
+(defn ^:no-doc rand-gamma
+  [k rng]
+  (let [k' (cond-> k (< 1) inc)
+        a1 (- k' 1/3)
+        a2 (/ 1 (sqrt (* 9 a1)))
+        [r1 r2] (split rng)
+        [v u] (loop [rng r1]
+                (let [[r1 r2] (split rng)
+                      [x v] (loop [rng r2]
+                              (let [x (rand-normal rng)
+                                    v (+ 1 (* a2 x))]
+                                (if (<= v 0)
+                                  (recur (next-rng rng))
+                                  [x v])))
+                      v (* v v v)
+                      u (rand-double r1)]
+                  (if (and (> u (- 1 (* 0.331 (pow x 4))))
+                           (> (log u) (+ (* 0.5 x x)
+                                         (* a1 (+ 1 (- v) (log v))))))
+                    (recur (next-rng r1))
+                    [v u])))]
+    (if (= k k')
+      (* a1 v)
+      (* (pow (loop [rng r2]
+                (let [r (rand-double rng)]
+                  (if (> r 0) r
+                      (recur (next-rng rng)))))
+              (/ 1 k))
+         a1 v))))
+
 (defn ^:no-doc rand-int-tuple
   [a b rng]
   (let [[r1 r2] (split rng)]
     [(rand-int a b r1) (rand-int a b r2)]))
-
-(def ^:no-doc next-rng
-  (comp first split))
 
 (defn ^:no-doc shuffle
   [coll rng]
@@ -142,11 +178,19 @@
     [mu sd]
     ISampleable
     (sample-1 [this rng]
-      (let [[r1 r2] (split rng)]
-        (+ (* (sqrt (* -2 (log (rand-double r1))))
-              (cos (* 2 PI (rand-double r2)))
-              sd)
-           mu)))
+      (+ (* (rand-normal rng) sd) mu))
+    (sample-n [this n rng]
+      (default-sample-n this n rng))
+    #?@(:clj (clojure.lang.ISeq
+              (seq [this] (sampleable->seq this)))
+        :cljs (ISeqable
+               (-seq [this] (sampleable->seq this)))))
+
+(deftype ^:no-doc Gamma
+    [shape scale]
+    ISampleable
+    (sample-1 [this rng]
+      (* (rand-gamma shape rng) scale))
     (sample-n [this n rng]
       (default-sample-n this n rng))
     #?@(:clj (clojure.lang.ISeq
@@ -214,6 +258,12 @@
   Params: {:mu ∈ ℝ, :sd ∈ ℝ}"
   [{:keys [mu sd]}]
   (->Normal mu sd))
+
+(defn gamma
+  "Returns a gamma distribution.
+  Params: {:shape ∈ ℝ, :scale ∈ ℝ}"
+  [{:keys [shape scale] :or {shape 1.0 scale 1.0}}]
+  (->Gamma shape scale))
 
 (defn categorical
   "Returns a categorical distribution.
