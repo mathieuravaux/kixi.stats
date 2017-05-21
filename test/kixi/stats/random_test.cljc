@@ -1,5 +1,6 @@
 (ns kixi.stats.random-test
   (:require [kixi.stats.random :as sut]
+            [kixi.stats.core :as kixi]
             [clojure.test.check.generators :as gen]
             #?@(:cljs
                 [[clojure.test.check.clojure-test :refer-macros [defspec]]
@@ -31,7 +32,7 @@
 
 (def gen-shape
   "Returns a double > 0 and <= 10"
-  (gen/fmap #(* % 0.001) (gen/such-that #(and (<= % 10000) (not (#{2 3} %))) gen/s-pos-int)))
+  (gen/fmap #(* % 0.001) (gen/choose 1 10000)))
 
 (def gen-categories
   "Returns [[categories] [probabilities]]. Probabilities sum to 1.0"
@@ -86,6 +87,46 @@
            (sut/sample n (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
     (is (= (sut/sample n (sut/categorical ks ps) {:seed seed})
            (sut/sample n (sut/categorical ks ps) {:seed seed})))))
+
+(defn mean-convergence-reducer
+  [mean]
+  (fn
+    ([] [0 0 0])
+    ([[n m ss :as acc] e]
+     (let [n' (inc n)
+           m' (+ m (/ (- e m) n'))
+           ss (+ ss (* (- e m') (- e m)))
+           ci (* (sqrt (/ ss n')) 0.05)]
+       (cond
+         (> n' 10000) (reduced false)
+         (and (> n' 100)
+              (<= (- mean ci) m' (+ mean ci)))
+         (reduced true)
+         :else [n' m' ss])))
+    ([acc] acc)))
+
+(defn converges-to-mean? [distribution mean]
+  (transduce identity (mean-convergence-reducer mean) distribution))
+
+(defspec sample-means-converge-to-parameter
+  test-opts
+  (for-all [seed gen/int
+            a gen/int
+            b gen/int
+            r gen-rate
+            s gen-shape
+            p gen-probability
+            n gen/nat]
+    (is (converges-to-mean? (sut/uniform a b)
+                            (+ a (/ (- b a) 2))))
+    (is (converges-to-mean? (sut/exponential r)
+                            (/ 1 r)))
+    (is (converges-to-mean? (sut/binomial {:n n :p p})
+                            (* n p)))
+    (is (converges-to-mean? (sut/normal {:mu a :sd r})
+                            a))
+    (is (converges-to-mean? (sut/gamma {:shape s :scale (/ 1 r)})
+                            (/ s r)))))
 
 (defspec sample-summary-returns-categorical-sample-frequencies
   test-opts
