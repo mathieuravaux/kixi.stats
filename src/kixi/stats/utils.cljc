@@ -22,6 +22,10 @@
   #?(:clj  (Math/log x)
      :cljs (js/Math.log x)))
 
+(defn exp [x]
+  #?(:clj  (Math/exp x)
+     :cljs (js/Math.exp x)))
+
 (defn cos [x]
   #?(:clj  (Math/cos x)
      :cljs (js/Math.cos x)))

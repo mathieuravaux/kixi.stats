@@ -1,6 +1,6 @@
 (ns kixi.stats.random
   (:refer-clojure :exclude [shuffle rand-int])
-  (:require [kixi.stats.utils :refer [pow log sqrt cos PI]]
+  (:require [kixi.stats.utils :refer [pow log sqrt exp cos PI]]
             [clojure.test.check.random :refer [make-random rand-double rand-long split split-n]]))
 
 ;;;; Randomness helpers
@@ -239,6 +239,23 @@
         :cljs (ISeqable
                (-seq [this] (sampleable->seq this)))))
 
+(deftype ^:no-doc Poisson
+    [lambda]
+    ISampleable
+    (sample-1 [this rng]
+      (let [l (exp (- lambda))]
+        (loop [p 1 k 0 rng rng]
+          (let [p (* p (rand-double rng))]
+            (if (> p l)
+              (recur p (inc k) (next-rng rng))
+              k)))))
+    (sample-n [this n rng]
+      (default-sample-n this n rng))
+    #?@(:clj (clojure.lang.ISeq
+              (seq [this] (sampleable->seq this)))
+        :cljs (ISeqable
+               (-seq [this] (sampleable->seq this)))))
+
 (deftype ^:no-doc Categorical
     [ks ps]
     ISampleable
@@ -323,6 +340,12 @@
   Params: d1 ∈ ℕ > 0, d2 ∈ ℕ > 0"
   [d1 d2]
   (->F d1 d2))
+
+(defn poisson
+  "Returns a Poisson distribution.
+  Params: lambda ∈ ℝ > 0"
+  [lambda]
+  (->Poisson lambda))
 
 (defn categorical
   "Returns a categorical distribution.

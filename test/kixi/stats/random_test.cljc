@@ -77,6 +77,8 @@
            (sut/draw (sut/chi-squared k) {:seed seed})))
     (is (= (sut/draw (sut/f k d) {:seed seed})
            (sut/draw (sut/f k d) {:seed seed})))
+    (is (= (sut/draw (sut/poisson alpha) {:seed seed})
+           (sut/draw (sut/poisson alpha) {:seed seed})))
     (is (= (sut/draw (sut/categorical ks ps) {:seed seed})
            (sut/draw (sut/categorical ks ps) {:seed seed})))))
 
@@ -112,6 +114,8 @@
            (sut/sample n (sut/chi-squared k) {:seed seed})))
     (is (= (sut/sample n (sut/f k d) {:seed seed})
            (sut/sample n (sut/f k d) {:seed seed})))
+    (is (= (sut/sample n (sut/poisson alpha) {:seed seed})
+           (sut/sample n (sut/poisson alpha) {:seed seed})))
     (is (= (sut/sample n (sut/categorical ks ps) {:seed seed})
            (sut/sample n (sut/categorical ks ps) {:seed seed})))))
 
@@ -163,7 +167,8 @@
     (is (converges-to-mean? (/ s r)
                             (sut/gamma {:shape s :scale (/ 1 r)})))
     (is (converges-to-mean? k (sut/chi-squared k)))
-    (is (converges-to-mean? (/ d (- d 2)) (sut/f k d)))))
+    (is (converges-to-mean? (/ d (- d 2)) (sut/f k d)))
+    (is (converges-to-mean? alpha (sut/poisson alpha)))))
 
 (defspec sample-summary-returns-categorical-sample-frequencies
   test-opts
