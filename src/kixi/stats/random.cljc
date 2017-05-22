@@ -379,9 +379,9 @@
      (sample-n distribution n rng))))
 
 (defn sample-summary
-  "Returns a summary count of each class
-  for a sample of a given length from a discrete distribution
-  such as the Bernoulli or categorical.
+  "Returns a summary count of each variate for a sample
+  of a given length from a discrete distribution
+  such as the Bernoulli, binomial or categorical.
   An optional seed long will ensure deterministic results"
   ([n ^kixi.stats.random.IDiscrete distribution]
    (sample-summary n distribution {}))
