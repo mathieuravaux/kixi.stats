@@ -26,7 +26,7 @@
 (defn ^:no-doc rand-gamma
   [k rng]
   (let [k' (cond-> k (< 1) inc)
-        a1 (- k' 1/3)
+        a1 (- k' (/ 1 3))
         a2 (/ 1 (sqrt (* 9 a1)))
         [r1 r2] (split rng)
         [v u] (loop [rng r1]

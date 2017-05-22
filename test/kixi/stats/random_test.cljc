@@ -2,13 +2,14 @@
   (:require [kixi.stats.random :as sut]
             [kixi.stats.core :as kixi]
             [clojure.test.check.generators :as gen]
+            [clojure.test.check]
             #?@(:cljs
                 [[clojure.test.check.clojure-test :refer-macros [defspec]]
-                 [clojure.test.check.properties :refer-macros [for-all]]
+                 [clojure.test.check.properties :as prop :refer-macros [for-all]]
                  [cljs.test :refer-macros [is deftest]]]
                 :clj
                 [[clojure.test.check.clojure-test :refer [defspec]]
-                 [clojure.test.check.properties :refer [for-all]]
+                 [clojure.test.check.properties :as prop :refer [for-all]]
                  [clojure.test :refer [is deftest]]])))
 
 (def test-opts
@@ -96,9 +97,9 @@
      (let [n' (inc n)
            m' (+ m (/ (- e m) n'))
            ss (+ ss (* (- e m') (- e m)))
-           ci (* (sqrt (/ ss n')) 0.05)]
+           ci (* (/ ss n') 0.1)]
        (cond
-         (> n' 10000) (reduced false)
+         (> n' 1000000) (reduced false)
          (and (> n' 100)
               (<= (- mean ci) m' (+ mean ci)))
          (reduced true)
