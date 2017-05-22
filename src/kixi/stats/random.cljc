@@ -87,7 +87,7 @@
 
 (defn ^:no-doc default-sample-n
   [^kixi.stats.random.ISampleable distribution n rng]
-  (take n (sampleable->seq distribution rng)))
+  (map #(sample-1 distribution %) (split-n rng n)))
 
 (declare ->Binomial)
 
@@ -108,185 +108,119 @@
 
 ;;;; Protocol implementations
 
-(deftype ^:no-doc Uniform
-    [a b]
-    ISampleable
-    (sample-1 [this rng]
-      (+ (* (rand-double rng) (- b a)) a))
-    (sample-n [this n rng]
-      (map #(sample-1 this %) (split-n rng n)))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defmacro defdistribution [name params & defs]
+  (let [definition (fn [sym defs]
+                     (some #(when (= (first %) sym) %) defs))]
+    `(deftype ^:no-doc ~name
+         ~params
+         ISampleable
+         ~(definition 'sample-1 defs)
+         ~(or (definition 'sample-n defs)
+            '(sample-n [this n rng]
+               (default-sample-n this n rng)))
+         ~@(when-let [form# (definition 'sample-frequencies defs)]
+             `(IDiscrete ~form#))
+         clojure.lang.ISeq
+         ~'(seq [this] (sampleable->seq this)))))
 
-(deftype ^:no-doc Exponential
-    [rate]
-    ISampleable
-    (sample-1 [this rng]
-      (/ (- (log (rand-double rng))) rate))
-    (sample-n [this n rng]
-      (map #(sample-1 this %) (split-n rng n)))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Uniform
+  [a b]
+  (sample-1 [this rng]
+    (+ (* (rand-double rng) (- b a)) a)))
 
-(deftype ^:no-doc Binomial
-    [n p]
-    ISampleable
-    (sample-1 [this rng]
-      (loop [i 0 rng rng result 0]
-        (if (< i n)
-          (recur (inc i) (next-rng rng)
-                 (if (< (rand-double rng) p)
-                   (inc result)
-                   result))
-          result)))
-    (sample-n [this n rng]
-      (lazy-seq
-       (if (pos? n)
-         (let [[r1 r2] (split rng)]
-           (cons (sample-1 this r1)
-                 (sample-n this (dec n) r2)))
-         nil)))
-    IDiscrete
-    (sample-frequencies [this n' rng]
-      (-> (sample-n this n' rng)
-          (frequencies)))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Exponential
+  [rate]
+  (sample-1 [this rng]
+    (/ (- (log (rand-double rng))) rate)))
 
-(deftype ^:no-doc Bernoulli
-    [p]
-    ISampleable
-    (sample-1 [this rng]
-      (< (rand-double rng) p))
-    (sample-n [this n rng]
-      (let [v (sample-1 (->Binomial n p) rng)]
-        (-> (concat (repeat v true)
-                    (repeat (- n v) false))
-            (shuffle rng))))
-    IDiscrete
-    (sample-frequencies [this n rng]
-      (let [v (sample-1 (->Binomial n p) rng)]
-        {true v false (- n v)}))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Binomial
+  [n p]
+  (sample-1 [this rng]
+    (loop [i 0 rng rng result 0]
+      (if (< i n)
+        (recur (inc i) (next-rng rng)
+               (if (< (rand-double rng) p)
+                 (inc result)
+                 result))
+        result)))
+  (sample-frequencies [this n' rng]
+    (-> (sample-n this n' rng)
+        (frequencies))))
 
-(deftype ^:no-doc Normal
-    [mu sd]
-    ISampleable
-    (sample-1 [this rng]
-      (+ (* (rand-normal rng) sd) mu))
-    (sample-n [this n rng]
-      (default-sample-n this n rng))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Bernoulli
+  [p]
+  (sample-1 [this rng]
+    (< (rand-double rng) p))
+  (sample-n [this n rng]
+    (let [v (sample-1 (->Binomial n p) rng)]
+      (-> (concat (repeat v true)
+                  (repeat (- n v) false))
+          (shuffle rng))))
+  (sample-frequencies [this n rng]
+    (let [v (sample-1 (->Binomial n p) rng)]
+      {true v false (- n v)})))
 
-(deftype ^:no-doc Gamma
-    [shape scale]
-    ISampleable
-    (sample-1 [this rng]
-      (* (rand-gamma shape rng) scale))
-    (sample-n [this n rng]
-      (default-sample-n this n rng))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Normal
+  [mu sd]
+  (sample-1 [this rng]
+    (+ (* (rand-normal rng) sd) mu)))
 
-(deftype ^:no-doc Beta
-    [alpha beta]
-    ISampleable
-    (sample-1 [this rng]
-      (let [[r1 r2] (split rng)
-            u (rand-gamma alpha r1)]
-        (/ u (+ u (rand-gamma beta r2)))))
-    (sample-n [this n rng]
-      (default-sample-n this n rng))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Gamma
+  [shape scale]
+  (sample-1 [this rng]
+    (* (rand-gamma shape rng) scale)))
 
-(deftype ^:no-doc ChiSquared
-    [k]
-    ISampleable
-    (sample-1 [this rng]
-      (* (rand-gamma (/ k 2) rng) 2))
-    (sample-n [this n rng]
-      (default-sample-n this n rng))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Beta
+  [alpha beta]
+  (sample-1 [this rng]
+    (let [[r1 r2] (split rng)
+          u (rand-gamma alpha r1)]
+      (/ u (+ u (rand-gamma beta r2))))))
 
-(deftype ^:no-doc F
-    [d1 d2]
-    ISampleable
-    (sample-1 [this rng]
-      (let [[r1 r2] (split rng)
-            x1 (* (rand-gamma (/ d1 2) r1) 2)
-            x2 (* (rand-gamma (/ d2 2) r2) 2)]
-        (/ (/ x1 d1) (/ x2 d2))))
-    (sample-n [this n rng]
-      (default-sample-n this n rng))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution ChiSquared
+  [k]
+  (sample-1 [this rng]
+    (* (rand-gamma (/ k 2) rng) 2)))
 
-(deftype ^:no-doc Poisson
-    [lambda]
-    ISampleable
-    (sample-1 [this rng]
-      (let [l (exp (- lambda))]
-        (loop [p 1 k 0 rng rng]
-          (let [p (* p (rand-double rng))]
-            (if (> p l)
-              (recur p (inc k) (next-rng rng))
-              k)))))
-    (sample-n [this n rng]
-      (default-sample-n this n rng))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution F
+  [d1 d2]
+  (sample-1 [this rng]
+    (let [[r1 r2] (split rng)
+          x1 (* (rand-gamma (/ d1 2) r1) 2)
+          x2 (* (rand-gamma (/ d2 2) r2) 2)]
+      (/ (/ x1 d1) (/ x2 d2)))))
 
-(deftype ^:no-doc Categorical
-    [ks ps]
-    ISampleable
-    (sample-1 [this rng]
-      (first (categorical-sample ks ps 1 rng)))
-    (sample-n [this n rng]
-      (shuffle (categorical-sample ks ps n rng) rng))
-    IDiscrete
-    (sample-frequencies [this n rng]
-      (loop [coll (transient {}) n n
-             rem 1 rng rng
-             ks ks ps ps]
-        (if (and (seq ks) (pos? rem))
-          (let [k (first ks)
-                p (first ps)
-                x (sample-1 (->Binomial n (/ p rem)) rng)]
-            (recur (assoc! coll k x) (- n x)
-                   (- rem p) (next-rng rng)
-                   (rest ks) (rest ps)))
-          (if (seq ks)
-            (-> (reduce #(assoc! %1 %2 0) coll ks)
-                (persistent!))
-            (persistent! coll)))))
-    #?@(:clj (clojure.lang.ISeq
-              (seq [this] (sampleable->seq this)))
-        :cljs (ISeqable
-               (-seq [this] (sampleable->seq this)))))
+(defdistribution Poisson
+  [lambda]
+  (sample-1 [this rng]
+    (let [l (exp (- lambda))]
+      (loop [p 1 k 0 rng rng]
+        (let [p (* p (rand-double rng))]
+          (if (> p l)
+            (recur p (inc k) (next-rng rng))
+            k))))))
+
+(defdistribution Categorical
+  [ks ps]
+  (sample-1 [this rng]
+    (first (categorical-sample ks ps 1 rng)))
+  (sample-n [this n rng]
+    (shuffle (categorical-sample ks ps n rng) rng))
+  (sample-frequencies [this n rng]
+    (loop [coll (transient {}) n n
+           rem 1 rng rng
+           ks ks ps ps]
+      (if (and (seq ks) (pos? rem))
+        (let [k (first ks)
+              p (first ps)
+              x (sample-1 (->Binomial n (/ p rem)) rng)]
+          (recur (assoc! coll k x) (- n x)
+                 (- rem p) (next-rng rng)
+                 (rest ks) (rest ps)))
+        (if (seq ks)
+          (-> (reduce #(assoc! %1 %2 0) coll ks)
+              (persistent!))
+          (persistent! coll))))))
 
 
 ;;;; Public API
