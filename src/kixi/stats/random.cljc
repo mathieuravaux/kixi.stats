@@ -198,6 +198,20 @@
         :cljs (ISeqable
                (-seq [this] (sampleable->seq this)))))
 
+(deftype ^:no-doc Beta
+    [alpha beta]
+    ISampleable
+    (sample-1 [this rng]
+      (let [[r1 r2] (split rng)
+            u (rand-gamma alpha r1)]
+        (/ u (+ u (rand-gamma beta r2)))))
+    (sample-n [this n rng]
+      (default-sample-n this n rng))
+    #?@(:clj (clojure.lang.ISeq
+              (seq [this] (sampleable->seq this)))
+        :cljs (ISeqable
+               (-seq [this] (sampleable->seq this)))))
+
 (deftype ^:no-doc Categorical
     [ks ps]
     ISampleable
@@ -264,6 +278,12 @@
   Params: {:shape ∈ ℝ, :scale ∈ ℝ}"
   [{:keys [shape scale] :or {shape 1.0 scale 1.0}}]
   (->Gamma shape scale))
+
+(defn beta
+  "Returns a beta distribution.
+  Params: {:alpha ∈ ℝ, :beta ∈ ℝ}"
+  [{:keys [alpha beta] :or {alpha 1.0 beta 1.0}}]
+  (->Beta alpha beta))
 
 (defn categorical
   "Returns a categorical distribution.

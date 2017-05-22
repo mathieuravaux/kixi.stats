@@ -35,6 +35,9 @@
   "Returns a double > 0 and <= 10"
   (gen/fmap #(* % 0.001) (gen/choose 1 10000)))
 
+(def gen-pos-real
+  (gen/double* {:infinite? false :NaN? false :min 0.1 :max 100}))
+
 (def gen-categories
   "Returns [[categories] [probabilities]]. Probabilities sum to 1.0"
   (gen/fmap #(vector (range (count %)) %) gen-probabilities))
@@ -47,6 +50,8 @@
             r gen-rate
             s gen-shape
             p gen-probability
+            alpha gen-pos-real
+            beta gen-pos-real
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/draw (sut/uniform a b) {:seed seed})
@@ -61,6 +66,8 @@
            (sut/draw (sut/normal {:mu a :sd b}) {:seed seed})))
     (is (= (sut/draw (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})
            (sut/draw (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
+    (is (= (sut/draw (sut/beta {:alpha alpha :beta beta}) {:seed seed})
+           (sut/draw (sut/beta {:alpha alpha :beta beta}) {:seed seed})))
     (is (= (sut/draw (sut/categorical ks ps) {:seed seed})
            (sut/draw (sut/categorical ks ps) {:seed seed})))))
 
@@ -72,6 +79,8 @@
             r gen-rate
             s gen-shape
             p gen-probability
+            alpha gen-pos-real
+            beta gen-pos-real
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/sample n (sut/uniform a b) {:seed seed})
@@ -86,6 +95,8 @@
            (sut/sample n (sut/normal {:mu a :sd b}) {:seed seed})))
     (is (= (sut/sample n (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})
            (sut/sample n (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
+    (is (= (sut/sample n (sut/beta {:alpha alpha :beta beta}) {:seed seed})
+           (sut/sample n (sut/beta {:alpha alpha :beta beta}) {:seed seed})))
     (is (= (sut/sample n (sut/categorical ks ps) {:seed seed})
            (sut/sample n (sut/categorical ks ps) {:seed seed})))))
 
@@ -117,6 +128,8 @@
             r gen-rate
             s gen-shape
             p gen-probability
+            alpha gen-pos-real
+            beta gen-pos-real
             n gen/nat]
     (is (converges-to-mean? (sut/uniform a b)
                             (+ a (/ (- b a) 2))))
@@ -126,6 +139,10 @@
                             (* n p)))
     (is (converges-to-mean? (sut/normal {:mu a :sd r})
                             a))
+    (is (converges-to-mean? (sut/gamma {:shape s :scale (/ 1 r)})
+                            (/ s r)))
+    (is (converges-to-mean? (sut/beta {:alpha alpha :beta beta})
+                            (/ alpha (+ alpha beta))))
     (is (converges-to-mean? (sut/gamma {:shape s :scale (/ 1 r)})
                             (/ s r)))))
 
@@ -188,6 +205,13 @@
             shape gen-shape
             rate gen-rate]
     (is (float? (sut/draw (sut/gamma {:shape shape :scale (/ 0.5 rate)})  {:seed seed})))))
+
+(defspec beta-returns-floats
+  test-opts
+  (for-all [seed gen/int
+            alpha gen-pos-real
+            beta gen-pos-real]
+    (is (float? (sut/draw (sut/beta {:alpha alpha :beta beta})  {:seed seed})))))
 
 (defspec categorical-returns-supplied-categories
   test-opts
