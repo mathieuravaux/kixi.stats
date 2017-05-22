@@ -9,6 +9,8 @@ A Clojure/ClojureScript library of statistical sampling and transducing function
 * Bernoulli
 * Binomial
 * Normal
+* Gamma
+* Beta
 * Categorical
 
 **Available transducing functions:**
