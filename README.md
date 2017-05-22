@@ -101,9 +101,9 @@ If you have multiple statistics to calculate over the same collection, take a lo
 
 Each distribution implements the `clojure.lang.ISeq` / `ISeqable`  interface, so _n_ variates can be sampled with `(take n (binomial {:n 100 :p 0.5}))`. However, where possible `sample` uses optimisations to return exactly _n_ variates, and should be preferred.
 
-**Finite summarisation**
+**Discrete summarisation**
 
-The Bernoulli, binomial and categorical distributions are discrete with finite support, so samples can be summarised by counting the number of times each variate appears. Discrete finite distributions can be directly sampled in this way with `sample-summary`:
+The Bernoulli and categorical distributions are discrete, so samples can be summarised by counting the number of times each sampled class appears. Discrete distributions can be directly sampled in this way with `sample-summary`:
 
 ```clojure
 (require '[kixi.stats.random :refer [sample-summary bernoulli]])
