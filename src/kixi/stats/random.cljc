@@ -150,6 +150,10 @@
            (cons (sample-1 this r1)
                  (sample-n this (dec n) r2)))
          nil)))
+    IDiscrete
+    (sample-frequencies [this n' rng]
+      (-> (sample-n this n' rng)
+          (frequencies)))
     #?@(:clj (clojure.lang.ISeq
               (seq [this] (sampleable->seq this)))
         :cljs (ISeqable

@@ -103,7 +103,7 @@ Each distribution implements the `clojure.lang.ISeq` / `ISeqable`  interface, so
 
 **Discrete summarisation**
 
-The Bernoulli and categorical distributions are discrete, so samples can be summarised by counting the number of times each sampled class appears. Discrete distributions can be directly sampled in this way with `sample-summary`:
+The Bernoulli, binomial and categorical distributions are discrete, so samples can be summarised by counting the number of times each variate appears. Discrete distributions can be directly sampled in this way with `sample-summary`:
 
 ```clojure
 (require '[kixi.stats.random :refer [sample-summary bernoulli]])
@@ -113,7 +113,7 @@ The Bernoulli and categorical distributions are discrete, so samples can be summ
 ;;=> {true 296, false 704}
 ```
 
-This is equivalent to `(frequencies (sample 1000 (bernoulli 0.3)))`, but `sample-summary` uses optimisations to avoid reifying and aggregating a large intermediate sample, and should be preferred. `sample-summary` returns a value for all available classes, even where that value is zero.
+This is equivalent to `(frequencies (sample 1000 (bernoulli 0.3)))`, but where possible `sample-summary` uses optimisations to avoid reifying and aggregating a large intermediate sample, and should be preferred. When `sample-summary` doesn't return a value for a particular variate, that value should be assumed zero.
 
 **Deterministic sampling**
 
