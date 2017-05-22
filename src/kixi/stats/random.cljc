@@ -212,6 +212,18 @@
         :cljs (ISeqable
                (-seq [this] (sampleable->seq this)))))
 
+(deftype ^:no-doc ChiSquared
+    [k]
+    ISampleable
+    (sample-1 [this rng]
+      (* (rand-gamma (/ k 2) rng) 2))
+    (sample-n [this n rng]
+      (default-sample-n this n rng))
+    #?@(:clj (clojure.lang.ISeq
+              (seq [this] (sampleable->seq this)))
+        :cljs (ISeqable
+               (-seq [this] (sampleable->seq this)))))
+
 (deftype ^:no-doc Categorical
     [ks ps]
     ISampleable
@@ -284,6 +296,12 @@
   Params: {:alpha ∈ ℝ, :beta ∈ ℝ}"
   [{:keys [alpha beta] :or {alpha 1.0 beta 1.0}}]
   (->Beta alpha beta))
+
+(defn chi-squared
+  "Returns a chi-squared distribution.
+  Params: k ∈ ℕ > 0"
+  [k]
+  (->ChiSquared k))
 
 (defn categorical
   "Returns a categorical distribution.

@@ -52,6 +52,7 @@
             p gen-probability
             alpha gen-pos-real
             beta gen-pos-real
+            k gen/s-pos-int
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/draw (sut/uniform a b) {:seed seed})
@@ -68,6 +69,8 @@
            (sut/draw (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
     (is (= (sut/draw (sut/beta {:alpha alpha :beta beta}) {:seed seed})
            (sut/draw (sut/beta {:alpha alpha :beta beta}) {:seed seed})))
+    (is (= (sut/draw (sut/chi-squared k) {:seed seed})
+           (sut/draw (sut/chi-squared k) {:seed seed})))
     (is (= (sut/draw (sut/categorical ks ps) {:seed seed})
            (sut/draw (sut/categorical ks ps) {:seed seed})))))
 
@@ -81,6 +84,7 @@
             p gen-probability
             alpha gen-pos-real
             beta gen-pos-real
+            k gen/s-pos-int
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/sample n (sut/uniform a b) {:seed seed})
@@ -97,6 +101,8 @@
            (sut/sample n (sut/gamma {:shape s :scale (/ 0.5 r)}) {:seed seed})))
     (is (= (sut/sample n (sut/beta {:alpha alpha :beta beta}) {:seed seed})
            (sut/sample n (sut/beta {:alpha alpha :beta beta}) {:seed seed})))
+    (is (= (sut/sample n (sut/chi-squared k) {:seed seed})
+           (sut/sample n (sut/chi-squared k) {:seed seed})))
     (is (= (sut/sample n (sut/categorical ks ps) {:seed seed})
            (sut/sample n (sut/categorical ks ps) {:seed seed})))))
 
@@ -117,7 +123,7 @@
          :else [n' m' ss])))
     ([acc] acc)))
 
-(defn converges-to-mean? [distribution mean]
+(defn converges-to-mean? [mean distribution]
   (transduce identity (mean-convergence-reducer mean) distribution))
 
 (defspec sample-means-converge-to-parameter
@@ -130,21 +136,23 @@
             p gen-probability
             alpha gen-pos-real
             beta gen-pos-real
-            n gen/nat]
-    (is (converges-to-mean? (sut/uniform a b)
-                            (+ a (/ (- b a) 2))))
-    (is (converges-to-mean? (sut/exponential r)
-                            (/ 1 r)))
-    (is (converges-to-mean? (sut/binomial {:n n :p p})
-                            (* n p)))
-    (is (converges-to-mean? (sut/normal {:mu a :sd r})
-                            a))
-    (is (converges-to-mean? (sut/gamma {:shape s :scale (/ 1 r)})
-                            (/ s r)))
-    (is (converges-to-mean? (sut/beta {:alpha alpha :beta beta})
-                            (/ alpha (+ alpha beta))))
-    (is (converges-to-mean? (sut/gamma {:shape s :scale (/ 1 r)})
-                            (/ s r)))))
+            n gen/nat
+            k gen/s-pos-int]
+    (is (converges-to-mean? (+ a (/ (- b a) 2))
+                            (sut/uniform a b)))
+    (is (converges-to-mean? (/ 1 r)
+                            (sut/exponential r)))
+    (is (converges-to-mean? (* n p)
+                            (sut/binomial {:n n :p p})))
+    (is (converges-to-mean? a
+                            (sut/normal {:mu a :sd r})))
+    (is (converges-to-mean? (/ s r)
+                            (sut/gamma {:shape s :scale (/ 1 r)})))
+    (is (converges-to-mean? (/ alpha (+ alpha beta))
+                            (sut/beta {:alpha alpha :beta beta})))
+    (is (converges-to-mean? (/ s r)
+                            (sut/gamma {:shape s :scale (/ 1 r)})))
+    (is (converges-to-mean? k (sut/chi-squared k)))))
 
 (defspec sample-summary-returns-categorical-sample-frequencies
   test-opts
@@ -191,27 +199,6 @@
             n gen/nat
             p gen-probability]
     (is (integer? (sut/draw (sut/binomial {:n n :p p}) {:seed seed})))))
-
-(defspec normal-returns-floats
-  test-opts
-  (for-all [seed gen/int
-            mu (gen/double* {:infinite? false :NaN? false})
-            sd (gen/double* {:infinite? false :NaN? false :min 0})]
-    (is (float? (sut/draw (sut/normal {:mu mu :sd sd}) {:seed seed})))))
-
-(defspec gamma-returns-floats
-  test-opts
-  (for-all [seed gen/int
-            shape gen-shape
-            rate gen-rate]
-    (is (float? (sut/draw (sut/gamma {:shape shape :scale (/ 0.5 rate)})  {:seed seed})))))
-
-(defspec beta-returns-floats
-  test-opts
-  (for-all [seed gen/int
-            alpha gen-pos-real
-            beta gen-pos-real]
-    (is (float? (sut/draw (sut/beta {:alpha alpha :beta beta})  {:seed seed})))))
 
 (defspec categorical-returns-supplied-categories
   test-opts

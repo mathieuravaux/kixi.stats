@@ -11,6 +11,7 @@ A Clojure/ClojureScript library of statistical sampling and transducing function
 * Normal
 * Gamma
 * Beta
+* Chi-Squared
 * Categorical
 
 **Available transducing functions:**
