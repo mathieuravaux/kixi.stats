@@ -73,7 +73,7 @@
   (sample-1 [this rng])
   (sample-n [this n rng]))
 
-(defprotocol ^:no-doc IDiscrete
+(defprotocol ^:no-doc IFinite
   (sample-frequencies [this n rng]))
 
 (defn ^:no-doc sampleable->seq
@@ -87,7 +87,7 @@
 
 (defn ^:no-doc default-sample-n
   [^kixi.stats.random.ISampleable distribution n rng]
-  (take n (sampleable->seq distribution rng)))
+  (map #(sample-1 distribution %) (split-n rng n)))
 
 (declare ->Binomial)
 
@@ -114,7 +114,7 @@
     (sample-1 [this rng]
       (+ (* (rand-double rng) (- b a)) a))
     (sample-n [this n rng]
-      (map #(sample-1 this %) (split-n rng n)))
+      (default-sample-n this n rng))
     #?@(:clj (clojure.lang.ISeq
               (seq [this] (sampleable->seq this)))
         :cljs (ISeqable
@@ -126,7 +126,7 @@
     (sample-1 [this rng]
       (/ (- (log (rand-double rng))) rate))
     (sample-n [this n rng]
-      (map #(sample-1 this %) (split-n rng n)))
+      (default-sample-n this n rng))
     #?@(:clj (clojure.lang.ISeq
               (seq [this] (sampleable->seq this)))
         :cljs (ISeqable
@@ -144,12 +144,15 @@
                    result))
           result)))
     (sample-n [this n rng]
-      (lazy-seq
-       (if (pos? n)
-         (let [[r1 r2] (split rng)]
-           (cons (sample-1 this r1)
-                 (sample-n this (dec n) r2)))
-         nil)))
+      (default-sample-n this n rng))
+    IFinite
+    (sample-frequencies [this n' rng]
+      (let [baseline (->> (repeat 0)
+                          (map vector (range (inc n)))
+                          (into {}))]
+        (->> (sample-n this n' rng)
+             (frequencies)
+             (merge baseline))))
     #?@(:clj (clojure.lang.ISeq
               (seq [this] (sampleable->seq this)))
         :cljs (ISeqable
@@ -165,7 +168,7 @@
         (-> (concat (repeat v true)
                     (repeat (- n v) false))
             (shuffle rng))))
-    IDiscrete
+    IFinite
     (sample-frequencies [this n rng]
       (let [v (sample-1 (->Binomial n p) rng)]
         {true v false (- n v)}))
@@ -263,7 +266,7 @@
       (first (categorical-sample ks ps 1 rng)))
     (sample-n [this n rng]
       (shuffle (categorical-sample ks ps n rng) rng))
-    IDiscrete
+    IFinite
     (sample-frequencies [this n rng]
       (loop [coll (transient {}) n n
              rem 1 rng rng
@@ -379,8 +382,8 @@
   for a sample of a given length from a discrete distribution
   such as the Bernoulli or categorical.
   An optional seed long will ensure deterministic results"
-  ([n ^kixi.stats.random.IDiscrete distribution]
+  ([n ^kixi.stats.random.IFinite distribution]
    (sample-summary n distribution {}))
-  ([n ^kixi.stats.random.IDiscrete distribution {:keys [seed]}]
+  ([n ^kixi.stats.random.IFinite distribution {:keys [seed]}]
    (let [rng (if seed (make-random seed) (make-random))]
      (sample-frequencies distribution n rng))))
