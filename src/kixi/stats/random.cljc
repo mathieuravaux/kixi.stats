@@ -224,6 +224,21 @@
         :cljs (ISeqable
                (-seq [this] (sampleable->seq this)))))
 
+(deftype ^:no-doc F
+    [d1 d2]
+    ISampleable
+    (sample-1 [this rng]
+      (let [[r1 r2] (split rng)
+            x1 (* (rand-gamma (/ d1 2) r1) 2)
+            x2 (* (rand-gamma (/ d2 2) r2) 2)]
+        (/ (/ x1 d1) (/ x2 d2))))
+    (sample-n [this n rng]
+      (default-sample-n this n rng))
+    #?@(:clj (clojure.lang.ISeq
+              (seq [this] (sampleable->seq this)))
+        :cljs (ISeqable
+               (-seq [this] (sampleable->seq this)))))
+
 (deftype ^:no-doc Categorical
     [ks ps]
     ISampleable
@@ -302,6 +317,12 @@
   Params: k ∈ ℕ > 0"
   [k]
   (->ChiSquared k))
+
+(defn f
+  "Returns an F distribution.
+  Params: d1 ∈ ℕ > 0, d2 ∈ ℕ > 0"
+  [d1 d2]
+  (->F d1 d2))
 
 (defn categorical
   "Returns a categorical distribution.

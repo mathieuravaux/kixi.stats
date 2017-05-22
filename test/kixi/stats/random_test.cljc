@@ -38,6 +38,9 @@
 (def gen-pos-real
   (gen/double* {:infinite? false :NaN? false :min 0.1 :max 100}))
 
+(def gen-dof
+  (gen/choose 2 1000))
+
 (def gen-categories
   "Returns [[categories] [probabilities]]. Probabilities sum to 1.0"
   (gen/fmap #(vector (range (count %)) %) gen-probabilities))
@@ -53,6 +56,7 @@
             alpha gen-pos-real
             beta gen-pos-real
             k gen/s-pos-int
+            d gen/s-pos-int
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/draw (sut/uniform a b) {:seed seed})
@@ -71,6 +75,8 @@
            (sut/draw (sut/beta {:alpha alpha :beta beta}) {:seed seed})))
     (is (= (sut/draw (sut/chi-squared k) {:seed seed})
            (sut/draw (sut/chi-squared k) {:seed seed})))
+    (is (= (sut/draw (sut/f k d) {:seed seed})
+           (sut/draw (sut/f k d) {:seed seed})))
     (is (= (sut/draw (sut/categorical ks ps) {:seed seed})
            (sut/draw (sut/categorical ks ps) {:seed seed})))))
 
@@ -85,6 +91,7 @@
             alpha gen-pos-real
             beta gen-pos-real
             k gen/s-pos-int
+            d gen/s-pos-int
             n gen/nat
             [ks ps] gen-categories]
     (is (= (sut/sample n (sut/uniform a b) {:seed seed})
@@ -103,6 +110,8 @@
            (sut/sample n (sut/beta {:alpha alpha :beta beta}) {:seed seed})))
     (is (= (sut/sample n (sut/chi-squared k) {:seed seed})
            (sut/sample n (sut/chi-squared k) {:seed seed})))
+    (is (= (sut/sample n (sut/f k d) {:seed seed})
+           (sut/sample n (sut/f k d) {:seed seed})))
     (is (= (sut/sample n (sut/categorical ks ps) {:seed seed})
            (sut/sample n (sut/categorical ks ps) {:seed seed})))))
 
@@ -137,7 +146,8 @@
             alpha gen-pos-real
             beta gen-pos-real
             n gen/nat
-            k gen/s-pos-int]
+            k gen/s-pos-int
+            d gen-dof]
     (is (converges-to-mean? (+ a (/ (- b a) 2))
                             (sut/uniform a b)))
     (is (converges-to-mean? (/ 1 r)
@@ -152,7 +162,8 @@
                             (sut/beta {:alpha alpha :beta beta})))
     (is (converges-to-mean? (/ s r)
                             (sut/gamma {:shape s :scale (/ 1 r)})))
-    (is (converges-to-mean? k (sut/chi-squared k)))))
+    (is (converges-to-mean? k (sut/chi-squared k)))
+    (is (converges-to-mean? (/ d (- d 2)) (sut/f k d)))))
 
 (defspec sample-summary-returns-categorical-sample-frequencies
   test-opts
