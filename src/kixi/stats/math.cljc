@@ -42,6 +42,10 @@
   #?(:clj  (Math/sin x)
      :cljs (js/Math.sin x)))
 
+(defn ceil [x]
+  #?(:clj  (Math/ceil x)
+     :cljs (js/Math.ceil x)))
+
 (defn floor [x]
   #?(:clj  (Math/floor x)
      :cljs (js/Math.floor x)))
@@ -174,3 +178,62 @@
           abs-g
           (/ (- PI)
              (* x abs-g (sin (* PI x)))))))))
+
+(defn continued-fraction
+  [fa fb e max-iterations]
+  (fn [x]
+    (loop [n 1
+           d-prev 0.0
+           h-prev (fa 0 x)
+           c-prev h-prev]
+      (let [a (fa n x)
+            b (fb n x)
+            dn (+ a (* b d-prev))
+            cn (+ a (/ b c-prev))
+            dn (/ 1 dn)
+            deltan (* cn dn)
+            hn (* h-prev deltan)]
+        (if (< (abs (dec deltan)) e)
+          hn
+          (recur (inc n) dn hn cn))))))
+
+(defn gamma-p
+  "The regularized incomplete Gamma function"
+  [a x]
+  (let [aln (log-gamma a)
+        ap a
+        sum (/ 1 a)
+        del sum
+        b (- (inc x) a)
+        c (/ 1 1.0e-30)
+        d (/ 1 b)
+        h d
+        i 1
+        max-iter (ceil (+ 17
+                          (* a 0.4)
+                          (* (log (if (>= a 1) a (/ 1 a))) 8.5)))]
+    (cond
+      (or (< x 0) (<= a 0)) nil
+      (< x (inc a))
+      (loop [i 0
+             sum sum
+             del del
+             ap ap]
+        (if (> i max-iter)
+          (* sum (exp (- (* a (log x))
+                         x aln)))
+          (let [ap (inc ap)
+                del (* del (/ x ap))]
+            (recur (inc i) (+ sum del) del ap))))
+      :else
+      (loop [i 0
+             an (* (- i) (- i a))
+             b (+ b 2)
+             d (+ b (* an d))
+             c (+ b (/ an c))
+             d (/ 1 d)
+             h (* h d c)]
+        (if (> i max-iter)
+          (- 1 (* h (exp (- (* a (log x))
+                            x aln))))
+          (recur (inc i) an b d c d h))))))

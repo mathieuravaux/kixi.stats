@@ -4,6 +4,7 @@
             [clojure.test.check.properties :as prop]
             [kixi.stats.core :as kixi]
             [kixi.stats.math :refer [abs sq pow sqrt root equal]]
+            [kixi.stats.random :refer [chi-squared cdf]]
             #?@(:cljs
                 [[clojure.test.check.clojure-test :refer-macros [defspec]]
                  [clojure.test.check.properties :refer-macros [for-all]]
@@ -200,6 +201,31 @@
         k-tilde (when (> k 1) (- k (/ (sq (dec k)) (- n 1))))]
     (when (and r-tilde k-tilde (> r-tilde 1) (> k-tilde 1))
       (sqrt (/ (/ chi-squared n) (min (- r-tilde 1) (- k-tilde 1)))))))
+
+(defn chisq-test'
+  [fx fy coll]
+  (let [inc (fnil inc 0)
+        inc-val (fn [m k] (update m k inc))
+        [n xs ys xys] (reduce
+                       (fn [[n xs ys xys] e]
+                         (let [x (fx e)
+                               y (fy e)]
+                           [(inc n)
+                            (inc-val xs x)
+                            (inc-val ys y)
+                            (inc-val xys [x y])]))
+                       [0 {} {} {}]
+                       coll)
+        df (* (dec (count xs))
+              (dec (count ys)))
+        chisq (->> (for [x (keys xs) y (keys ys)]
+                     (let [expected (/ (* (get xs x 0)
+                                          (get ys y 0))
+                                       n)]
+                       (/ (sq (- (get xys [x y] 0) expected)) expected)))
+                   (reduce +))]
+    (prn {:X-sq chisq :df df})
+    (cdf (chi-squared df) chisq)))
 
 (defn correlation-matrix'
   [coll]

@@ -1,6 +1,6 @@
 (ns kixi.stats.random
   (:refer-clojure :exclude [shuffle rand-int])
-  (:require [kixi.stats.math :refer [abs pow log sqrt exp cos sin PI log-gamma sq floor]]
+  (:require [kixi.stats.math :refer [abs pow log sqrt exp cos sin PI log-gamma sq floor gamma-p]]
             [clojure.data.avl :as avl]
             [clojure.test.check.random :refer [make-random rand-double rand-long split split-n]]))
 
@@ -187,6 +187,12 @@
 (defprotocol ^:no-doc IDiscrete
   (sample-frequencies [this n rng]))
 
+(defprotocol ^:no-doc IDensity
+  (median [this])
+  (quantile [this p])
+  (cdf [this x])
+  (pdf [this x]))
+
 (defn ^:no-doc sampleable->seq
   ([^kixi.stats.random.ISampleable distribution]
    (sampleable->seq distribution (make-random)))
@@ -335,6 +341,25 @@
       (* (rand-gamma (/ k 2) rng) 2))
     (sample-n [this n rng]
       (default-sample-n this n rng))
+    IDensity
+    (median [this]
+      (* k (pow (- 1 (/ 2 (* 9 k))) 3)))
+    (quantile [this p]
+      ;; TODO
+      nil)
+    (pdf [this x]
+      (cond
+        (neg? x) 0
+        (and (zero? x) (= k 2)) 0.5
+        :else
+        (exp (- (* (dec (/ k 2)) (log x))
+                (/ x 2)
+                (* (/ k 2) (log 2))
+                (log-gamma (/ k 2))))))
+    (cdf [this x]
+      (if (neg? x)
+        0
+        (gamma-p (/ k 2) (/ x 2))))
     #?@(:clj (clojure.lang.ISeq
               (seq [this] (sampleable->seq this)))
         :cljs (ISeqable
