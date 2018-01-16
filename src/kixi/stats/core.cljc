@@ -2,7 +2,7 @@
   (:require [kixi.stats.math :refer [sq sqrt pow root]]
             [kixi.stats.data :as data]
             [kixi.stats.test :as t]
-            [redux.core :refer [fuse-matrix]]
+            [redux.core :refer [fuse fuse-matrix pre-step]]
             #?@(:clj [[kixi.stats.distribution :as d]
                       [kixi.stats.digest :refer [t-digest]]]))
   (:refer-clojure :exclude [count]))
@@ -450,3 +450,22 @@
 (defn chisq-test
   [f1 f2]
   (post-complete (cross-tabulate f1 f2) t/chisq-test))
+
+(defn t-test
+  ([b]
+   (let [rf (fuse {:mu mean :sd standard-deviation :n ((remove nil?) count)})]
+     (t-test rf b)))
+  ([a b & [opts]]
+   (let [one-sample? (number? b)
+         summary (fuse {:mu mean :sd standard-deviation :n ((remove nil?) count)})
+         a-rf (if (keyword? a)
+                (pre-step summary a)
+                a)
+         b-rf (if (keyword? b)
+                (pre-step summary b)
+                b)
+         rf (fuse (cond-> {:a a-rf}
+                    (not (number? b))
+                    (assoc :b b-rf)))]
+     (post-complete rf (fn [{:keys [a] :as results}]
+                         (t/t-test a (or (:b results) b) opts))))))

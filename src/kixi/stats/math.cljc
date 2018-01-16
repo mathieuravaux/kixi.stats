@@ -213,3 +213,50 @@
             (if (< i max-iter)
               (recur (inc i) b c d h)
               (- 1 (* h (exp (- (* a (log x)) x (log-gamma a))))))))))))
+
+(defn beta-continued-fraction
+  "Computes the continued fraction for the incomplete beta function
+by modified Lentz' method"
+  [x a b]
+  (let [gtmin (fn [x] (if (< (abs x) 1e-30) 1e-30 x))
+        qab (+ a b)
+        qap (inc a)
+        qam (dec a)
+        d (/ 1 (gtmin (- 1 (/ (* qab x) qap))))]
+    (loop [m 1
+           c 1
+           d d
+           h d]
+      (let [m2 (* m 2)
+            aa (/ (* m x (- b m)) (* (+ qam m2) (+ a m2)))
+            d (gtmin (inc (* aa d)))
+            c (gtmin (inc (/ aa c)))
+            d (/ 1 d)
+            h (* h c d)
+            aa (/ (* (- (+ a m)) (+ qab m) x)
+                  (* (+ a m2) (+ qap m2)))
+            d (gtmin (inc (* aa d)))
+            c (gtmin (inc (/ aa c)))
+            d (/ 1 d)
+            del (* d c)
+            h (* h c d)]
+        (if (or (= m 100) (< (abs (dec del)) 3e-7))
+          h
+          (recur m c d h))))))
+
+(defn incomplete-beta
+  "Computes the incomplete beta function I_x(a,b)"
+  [x a b]
+  (let [bt (if (or (zero? x) (zero? (dec x)))
+             0
+             (exp (+ (- (log-gamma (+ a b))
+                        (log-gamma a)
+                        (log-gamma b))
+                     (* a (log x))
+                     (* b (log (- 1 x))))))]
+    (cond
+      (or (< x 0) (> x 1)) nil
+      (< x (/ (+ a 1) (+ a b 2)))
+      (* bt (/ (beta-continued-fraction x a b) a))
+      :else
+      (- 1 (* bt (/ (beta-continued-fraction (- 1 x) b a) b))))))

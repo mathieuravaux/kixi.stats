@@ -542,3 +542,15 @@
                    (repeat 8 {:v1 :b :v2 :y}))]
     (is (=ish (transduce identity (kixi/chisq-test :v1 :v2) xs)
               {:p-value 0.6903283294641935, :X-sq 0.1587301587301587, :dof 1}))))
+
+(deftest t-test-test
+  (let [xs [2 4 4 4 5 5 5 7 9]]
+    (is (= {:p-value 1.0, :t 0.0, :dof 8.0}
+           (transduce identity (kixi/t-test 5.0) xs))))
+  (let [xs (map #(hash-map :a % :b %) [2 4 4 4 5 5 5 7 9])]
+    (is (= {:p-value 1.0, :t 0.0, :dof 16.0}
+           (transduce identity (kixi/t-test :a :b) xs))))
+  (let [xs (concat (map #(hash-map :a %) [2 4 4 4 5 5 5 7 9])
+                   (map #(hash-map :b %) [2 4 4 4 5 5 5 7 9]))]
+    (is (= {:p-value 1.0, :t 0.0, :dof 16.0}
+           (transduce identity (kixi/t-test :a :b) xs)))))
